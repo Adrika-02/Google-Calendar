@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  events Event[]
+}
+
+// A row in Event is one of three things:
+//   1. A standalone (non-recurring) event     — rrule null, recurrenceId null
+//   2. A recurring series master              — rrule set,  recurrenceId null
+//   3. An override of a single occurrence    — rrule null, recurrenceId → master, originalStartUtc set
+//
+// Cancelled occurrences are NOT stored here; they live in EventException.
+model Event {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  colorId     String  @default("graphite") // GCal palette key, e.g. "tomato", "sage"
+
+  startUtc DateTime
+  endUtc   DateTime
+  isAllDay Boolean  @default(false)
+  timezone String // IANA zone captured at creation, e.g. "America/New_York"
+
+  // Recurrence — both null on standalone events
+  rrule            String?   // RFC 5545 RRULE string; present only on master rows
+  recurrenceId     String?   // FK → master Event; set only on override rows
+  originalStartUtc DateTime? // UTC start of the generated occurrence this row replaces
+
+  // Optional user FK — nullable now so auth can wire in without a schema migration
+  userId String?
+
+  // Optimistic concurrency — callers must send the current value; server rejects mismatches
+  version Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Self-referential: master ↔ override instances
+  masterEvent Event?  @relation("RecurrenceOverrides", fields: [recurrenceId], references: [id], onDelete: Cascade)
+  overrides   Event[] @relation("RecurrenceOverrides")
+
+  // Cancelled occurrences belonging to this master series
+  exceptions EventException[]
+
+  user User? @relation(fields: [userId], references: [id])
+
+  // Composite index for the primary range-query pattern: "events for user between T1 and T2"
+  @@index([userId, startUtc, endUtc])
+  // Fallback index for unauthenticated / admin range queries
+  @@index([startUtc, endUtc])
+  // Override lookup: "all overrides for this master"
+  @@index([recurrenceId])
+}
+
+// EventException represents a cancelled occurrence of a recurring series —
+// the RFC 5545 EXDATE equivalent. One row per cancelled occurrence.
+model EventException {
+  id               String   @id @default(cuid())
+  masterId         String
+  originalStartUtc DateTime // the generated occurrence UTC start that is cancelled
+
+  createdAt DateTime @default(now())
+
+  master Event @relation(fields: [masterId], references: [id], onDelete: Cascade)
+
+  // One cancellation per occurrence per series
+  @@unique([masterId, originalStartUtc])
+  @@index([masterId])
+}

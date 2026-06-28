@@ -1,0 +1,245 @@
+### Google Calendar Clone — REST API Demo
+### Compatible with VS Code REST Client extension and JetBrains HTTP Client.
+### Set @baseUrl before running.
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+# ────────────────────────────────────────────────────────────────────────────
+# HEALTH
+# ────────────────────────────────────────────────────────────────────────────
+
+### Health check
+GET {{baseUrl}}/api/health
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# LIST EVENTS (with RRULE expansion)
+# ────────────────────────────────────────────────────────────────────────────
+
+### Get all events overlapping the week of 2026-06-28
+GET {{baseUrl}}/api/events?start=2026-06-28T00:00:00.000Z&end=2026-07-05T00:00:00.000Z&tz=America/New_York
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# CREATE — standalone event
+# ────────────────────────────────────────────────────────────────────────────
+
+### Create a standalone one-off event
+# @name standaloneEvent
+POST {{baseUrl}}/api/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Team Lunch",
+  "description": "Monthly team lunch at the usual spot",
+  "location": "123 Main St",
+  "colorId": "tomato",
+  "startUtc": "2026-06-30T17:00:00.000Z",
+  "endUtc": "2026-06-30T18:30:00.000Z",
+  "isAllDay": false,
+  "timezone": "America/New_York"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# CREATE — recurring event
+# ────────────────────────────────────────────────────────────────────────────
+
+### Create a weekly recurring event (Mon/Wed/Fri standup)
+# @name recurringEvent
+POST {{baseUrl}}/api/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Daily Standup",
+  "colorId": "sage",
+  "startUtc": "2026-06-29T14:00:00.000Z",
+  "endUtc": "2026-06-29T14:15:00.000Z",
+  "isAllDay": false,
+  "timezone": "America/New_York",
+  "rrule": "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+}
+
+### Create an all-day recurring event (birthday, every year)
+POST {{baseUrl}}/api/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Sarah's Birthday",
+  "colorId": "flamingo",
+  "startUtc": "2026-07-04T00:00:00.000Z",
+  "endUtc": "2026-07-04T23:59:59.000Z",
+  "isAllDay": true,
+  "timezone": "UTC",
+  "rrule": "FREQ=YEARLY"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# UPDATE — edit all occurrences
+# ────────────────────────────────────────────────────────────────────────────
+
+### Edit ALL occurrences of a recurring event (rename + recolor)
+### Replace <masterId> and <currentVersion> with values from the create response
+PATCH {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "version": 0,
+  "editScope": "all",
+  "title": "Standup (renamed)",
+  "colorId": "banana"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# UPDATE — edit single occurrence (creates an override row)
+# ────────────────────────────────────────────────────────────────────────────
+
+### Edit only the Wednesday 2026-07-01 occurrence — move it 30 min later
+PATCH {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "version": 0,
+  "editScope": "single",
+  "originalStartUtc": "2026-07-01T14:00:00.000Z",
+  "startUtc": "2026-07-01T14:30:00.000Z",
+  "endUtc": "2026-07-01T14:45:00.000Z",
+  "title": "Standup (moved)"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# UPDATE — this and following (splits the series)
+# ────────────────────────────────────────────────────────────────────────────
+
+### From the 2026-07-06 occurrence onward, rename and change cadence to daily
+PATCH {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "version": 0,
+  "editScope": "thisAndFollowing",
+  "originalStartUtc": "2026-07-06T14:00:00.000Z",
+  "title": "Daily Sync (new cadence)",
+  "rrule": "FREQ=DAILY"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# UPDATE — optimistic concurrency conflict demo
+# ────────────────────────────────────────────────────────────────────────────
+
+### Sending a stale version → expect 409 Conflict
+PATCH {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "version": 0,
+  "editScope": "all",
+  "title": "This should 409 if version was already bumped"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# DELETE — single occurrence (writes EXDATE exception row)
+# ────────────────────────────────────────────────────────────────────────────
+
+### Cancel just the Friday 2026-07-03 standup
+DELETE {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "editScope": "single",
+  "originalStartUtc": "2026-07-03T14:00:00.000Z"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# DELETE — this and following
+# ────────────────────────────────────────────────────────────────────────────
+
+### End the series from 2026-08-01 onward (caps RRULE with UNTIL)
+DELETE {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "editScope": "thisAndFollowing",
+  "originalStartUtc": "2026-08-03T14:00:00.000Z"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# DELETE — entire series
+# ────────────────────────────────────────────────────────────────────────────
+
+### Delete the entire recurring event and all its exceptions/overrides
+DELETE {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "editScope": "all"
+}
+
+### Delete a standalone event (editScope defaults to "all")
+DELETE {{baseUrl}}/api/events/<standaloneEventId>
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# OVERLAP CHECK
+# ────────────────────────────────────────────────────────────────────────────
+
+### Check for events overlapping a proposed time slot
+POST {{baseUrl}}/api/events/check-overlap
+Content-Type: {{contentType}}
+
+{
+  "startUtc": "2026-06-30T17:00:00.000Z",
+  "endUtc": "2026-06-30T18:30:00.000Z"
+}
+
+### Same check but excluding the event being edited (so it doesn't conflict with itself)
+POST {{baseUrl}}/api/events/check-overlap
+Content-Type: {{contentType}}
+
+{
+  "startUtc": "2026-06-30T17:00:00.000Z",
+  "endUtc": "2026-06-30T18:30:00.000Z",
+  "excludeId": "<standaloneEventId>"
+}
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# VALIDATION ERROR DEMOS (expect 400)
+# ────────────────────────────────────────────────────────────────────────────
+
+### Missing required fields → 400 with details array
+POST {{baseUrl}}/api/events
+Content-Type: {{contentType}}
+
+{
+  "description": "No title, no times"
+}
+
+### endUtc before startUtc → 400
+POST {{baseUrl}}/api/events
+Content-Type: {{contentType}}
+
+{
+  "title": "Bad times",
+  "startUtc": "2026-07-01T18:00:00.000Z",
+  "endUtc": "2026-07-01T17:00:00.000Z",
+  "timezone": "UTC"
+}
+
+### editScope single without originalStartUtc → 400
+PATCH {{baseUrl}}/api/events/<masterId>
+Content-Type: {{contentType}}
+
+{
+  "version": 0,
+  "editScope": "single",
+  "title": "Forgot originalStartUtc"
+}

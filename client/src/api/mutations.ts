@@ -51,6 +51,7 @@ export interface CheckOverlapPayload {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -64,6 +65,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 async function patch<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "PATCH",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -77,6 +79,7 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
 async function del(path: string, body: unknown): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "DELETE",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

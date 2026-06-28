@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import type { EventInstance } from "@/types/event";
 import { getMonthGridDays } from "@/lib/dateUtils";
+import { API_BASE } from "@/lib/apiBase";
 
 async function fetchEvents(
   start: string,
@@ -9,7 +10,9 @@ async function fetchEvents(
   tz: string
 ): Promise<EventInstance[]> {
   const params = new URLSearchParams({ start, end, tz });
-  const res = await fetch(`/api/events?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/api/events?${params.toString()}`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error(`Fetch events failed: ${res.status}`);
   const json = (await res.json()) as { data: EventInstance[] };
   return json.data;

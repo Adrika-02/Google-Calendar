@@ -31,6 +31,7 @@ const GUEST_KEY = "gcal_guest";
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, {
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -89,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST" });
+    await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
     setIsGuest(false);
     sessionStorage.removeItem(GUEST_KEY);

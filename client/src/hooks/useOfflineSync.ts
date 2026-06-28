@@ -46,6 +46,7 @@ export function useOfflineSync(): boolean {
           if (item.type === "create") {
             const res = await fetch(`${API_BASE}/api/events`, {
               method: "POST",
+              credentials: "include",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(item.payload),
             });
@@ -62,6 +63,7 @@ export function useOfflineSync(): boolean {
             const { id, ...rest } = item.payload;
             const res = await fetch(`${API_BASE}/api/events/${id}`, {
               method: "PATCH",
+              credentials: "include",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(rest),
             });

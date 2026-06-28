@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { EventInstance } from "@/types/event";
 import { eventLocalStart } from "@/lib/dateUtils";
 import { getColor } from "@/lib/colors";

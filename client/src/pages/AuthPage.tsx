@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import { registerSchema, loginSchema } from "@/lib/authSchemas";
 
@@ -99,7 +98,7 @@ export function AuthPage() {
     const result = loginSchema.safeParse({ email: loginEmail, password: loginPass });
     if (!result.success) {
       const errs: Record<string, string> = {};
-      result.error.errors.forEach((err) => { if (err.path[0]) errs[err.path[0] as string] = err.message; });
+      result.error.issues.forEach((err) => { if (err.path[0]) errs[err.path[0] as string] = err.message; });
       setLoginErrs(errs);
       return;
     }
@@ -120,7 +119,7 @@ export function AuthPage() {
     const result = registerSchema.safeParse({ email: regEmail, name: regName, password: regPass });
     if (!result.success) {
       const errs: Record<string, string> = {};
-      result.error.errors.forEach((err) => { if (err.path[0]) errs[err.path[0] as string] = err.message; });
+      result.error.issues.forEach((err) => { if (err.path[0]) errs[err.path[0] as string] = err.message; });
       setRegErrs(errs);
       return;
     }
